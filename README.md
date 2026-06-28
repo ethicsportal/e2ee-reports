@@ -42,8 +42,8 @@ AGPL-3.0. Modifications served as a network service must be published.
 
 ## Status
 
-In planning. NGI Zero Commons Fund proposal under preparation for the 1 June 2026 deadline. Implementation begins after grant agreement is signed.
+In planning. An NLnet NGI grant application has been submitted (June 2026). Implementation begins once a grant agreement is signed. See [docs/protocol.md](docs/protocol.md) and [docs/threat-model.md](docs/threat-model.md) for the current design, and [SECURITY.md](SECURITY.md) for how to report findings.
 
 ## Contact
 
-yaroslav@ethicsportal.eu
+yaro@ethicsportal.eu
