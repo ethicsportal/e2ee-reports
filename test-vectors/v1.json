@@ -1,0 +1,59 @@
+[
+  {
+    "description": "short report, one reply each way",
+    "channel_secret": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
+    "channel_public": "8f40c5adb68f25624ae5b214ea767a6ec94d829d3d7b5e1ad1ba6f3e2138285f",
+    "ephemeral_secret": "202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f",
+    "report": "Invoices for the bridge repair were paid twice.",
+    "envelope": "01358072d6365880d1aeea329adf9121383851ed21a28e3b75e965d0d2cd16625491b81f5c63796c33e28d0904bdb5f03cba60e6ec7630b99cbd8eb21990bffc5bbfc6513b72d7f1a62e61b0213c1357c680748cd15c069764ec20cfd6ba1737",
+    "thread_id": "70ee7920190340b23e8311051632e7fc",
+    "follow_ups": [
+      {
+        "from": "recipient",
+        "message": "Which month were the second payments made?",
+        "ciphertext": "010000000091a8b3f85f43e015dba707b84b1396967a412a46bdc54bf2a62bf8cc1866b030940a3f66b9a52176d341f1b7e2b34751daff1692c4ed3a73bc39"
+      },
+      {
+        "from": "reporter",
+        "message": "March and April.",
+        "ciphertext": "0100000000ffbdea98306840328a369b573026a04bbac60f12386eb94d50114086c7a5cbd7"
+      }
+    ]
+  },
+  {
+    "description": "non-ASCII report, two replies from the recipient in a row",
+    "channel_secret": "404142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f",
+    "channel_public": "79a631eede1bf9c98f12032cdeadd0e7a079398fc786b88cc846ec89af85a51a",
+    "ephemeral_secret": "606162636465666768696a6b6c6d6e6f707172737475767778797a7b7c7d7e7f",
+    "report": "Керівник відділу вимагає готівку за погодження контрактів.",
+    "envelope": "01675dd574ed7789310b3d2e7681f3790b466c773b1521fecf36577958371ea52ffca06bc7c269352de44e9464246ffe82daf93e2980811f7e0580ac7e692a6599337e6157b41738afda5268bc77e495786f42179db2673a201c1edececc6bb9713d73326d67c4ae8e308962b253c235b3ff71fcdf91fd158e453de23367c40ce06c51f03ba01e44431a92ea9f6dce1599c9d5e9193d3fd8bb4976e147ff",
+    "thread_id": "26d762919b27903da472865b016b0ba6",
+    "follow_ups": [
+      {
+        "from": "recipient",
+        "message": "Дякуємо. Чи є свідки?",
+        "ciphertext": "01000000008d072d4793612d806e475ed7be51f28b1859d5f2e0912b53b69a478f792fe4cb7810650f104be1ba224a72f442e4b902c7822524d4"
+      },
+      {
+        "from": "recipient",
+        "message": "Ми почали перевірку.",
+        "ciphertext": "01000000010fedecc7fc72f10b5a3a41841b7c2015a6c5930ab4ef116cdb0d0be8ce89eed7aed9a35356c7c4a7a980094c1895c1b2f528f3ca08"
+      },
+      {
+        "from": "reporter",
+        "message": "Так, двоє колег.",
+        "ciphertext": "01000000005a3a44f217cf476fc5fe3a5aa74c5ea36f64f2247b1236c541aff95c8e8807392c6d88e359ba5b3bd98d9e28"
+      }
+    ]
+  },
+  {
+    "description": "empty report, no follow-up",
+    "channel_secret": "808182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9f",
+    "channel_public": "493e82fc74464a59268817623d2053c5eb8e2cc4a988b4fee179ec6b010d531d",
+    "ephemeral_secret": "a0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebf",
+    "report": "",
+    "envelope": "01605a725d2a4adfeeb1a29e17edd621c1b7593ee8cdbc44ac6c4ab6e2f805d23cdab63ab1b307efae50362b9537fed3db",
+    "thread_id": "696862acff7860758c71ceb23145e175",
+    "follow_ups": []
+  }
+]
