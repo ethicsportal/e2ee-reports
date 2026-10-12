@@ -42,7 +42,47 @@ AGPL-3.0. Modifications served as a network service must be published.
 
 ## Status
 
-In planning. An NLnet NGI grant application has been submitted (June 2026). Implementation begins once a grant agreement is signed. See [docs/protocol.md](docs/protocol.md) and [docs/threat-model.md](docs/threat-model.md) for the current design, and [SECURITY.md](SECURITY.md) for how to report findings.
+Prototype reference implementation in Rust. It covers the core of the protocol; several properties in the threat model are still open.
+
+Implemented:
+
+- Report envelope: a fresh X25519 ephemeral key per report, HKDF-SHA256, ChaCha20-Poly1305, with the version and both public keys bound as associated data. Low-order keys are refused.
+- Follow-up threads: one HKDF chain per direction and a fresh key per message. State captured later cannot decrypt earlier messages (forward secrecy). Messages must be read in order.
+- Thread state that can be saved and resumed weeks later.
+- Known-answer test vectors in [test-vectors/v1.json](test-vectors/v1.json). The X25519 layer matches the published public key for the `00..1f` test secret.
+- CI: formatting, clippy and tests on every push.
+
+Not yet:
+
+- A Diffie-Hellman ratchet. The symmetric chains do not recover after a compromise.
+- Unlinkable acknowledgement tokens.
+- Hardware-backed recipient keys. `ChannelSecret` is plain bytes in memory.
+- Authentic distribution of channel public keys.
+- A server component, the Rails adapter, and the self-hosting package.
+- External security review. Do not use this to protect real reports yet.
+
+An NLnet NGI grant application was submitted in June 2026 to fund the full specification and the open items above. See [docs/protocol.md](docs/protocol.md) and [docs/threat-model.md](docs/threat-model.md) for the design, and [SECURITY.md](SECURITY.md) for how to report findings.
+
+## Usage
+
+```rust
+use e2ee_reports::{open, seal, ChannelSecret};
+use rand_core::OsRng;
+
+// Case handler, once per channel.
+let channel = ChannelSecret::generate(&mut OsRng);
+
+// Reporter.
+let sealed = seal(&mut OsRng, &channel.public_key(), b"report text")?;
+let mut reporter_thread = sealed.thread; // keep this to read replies later
+// upload sealed.envelope.to_bytes()
+
+// Case handler.
+let opened = open(&channel, &sealed.envelope)?;
+let mut handler_thread = opened.thread;
+let reply = handler_thread.encrypt(b"thank you, one question")?;
+assert_eq!(reporter_thread.decrypt(&reply)?, b"thank you, one question");
+```
 
 ## Contact
 

@@ -2,7 +2,6 @@
 name = "e2ee-reports"
 version = "0.1.0"
 edition = "2021"
-rust-version = "1.75"
 license = "AGPL-3.0-only"
 description = "End-to-end encrypted reporting channel: the server stores ciphertext only"
 repository = "https://github.com/ethicsportal/e2ee-reports"
