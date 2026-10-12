@@ -303,9 +303,12 @@ mod tests {
         recipient.decrypt(&first).unwrap();
         recipient.decrypt(&second).unwrap();
 
-        let mut seized = Thread::from_bytes(&recipient.to_bytes()).unwrap();
-        assert!(seized.decrypt(&first).is_err());
-        assert!(seized.decrypt(&second).is_err());
+        // Rewind the receive counter so the order check can't be what stops
+        // it: the seized state must lack the key itself.
+        let mut seized = recipient.to_bytes().to_vec();
+        seized[86..90].copy_from_slice(&0u32.to_be_bytes());
+        let mut seized = Thread::from_bytes(&seized).unwrap();
+        assert_eq!(seized.decrypt(&first), Err(Error::Decryption));
     }
 
     #[test]
