@@ -1,0 +1,24 @@
+[package]
+name = "e2ee-reports"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.75"
+license = "AGPL-3.0-only"
+description = "End-to-end encrypted reporting channel: the server stores ciphertext only"
+repository = "https://github.com/ethicsportal/e2ee-reports"
+readme = "README.md"
+keywords = ["encryption", "whistleblowing", "x25519", "chacha20poly1305"]
+categories = ["cryptography"]
+
+[dependencies]
+chacha20poly1305 = "0.10"
+hkdf = "0.12"
+rand_core = { version = "0.6", features = ["getrandom"] }
+sha2 = "0.10"
+x25519-dalek = { version = "2", features = ["static_secrets", "zeroize"] }
+zeroize = { version = "1", features = ["derive"] }
+
+[dev-dependencies]
+hex = "0.4"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
