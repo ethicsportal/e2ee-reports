@@ -9,8 +9,12 @@
 
 mod envelope;
 mod error;
+mod thread;
 
 #[doc(hidden)]
 pub use envelope::seal_with_ephemeral;
-pub use envelope::{open, seal, ChannelPublicKey, ChannelSecret, Envelope, VERSION};
+pub use envelope::{
+    open, seal, ChannelPublicKey, ChannelSecret, Envelope, Opened, Sealed, VERSION,
+};
 pub use error::Error;
+pub use thread::{Role, Thread, ThreadMessage};

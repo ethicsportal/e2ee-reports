@@ -12,6 +12,7 @@ use sha2::Sha256;
 use x25519_dalek::{PublicKey, StaticSecret};
 use zeroize::{Zeroize, ZeroizeOnDrop};
 
+use crate::thread::{Role, Thread};
 use crate::Error;
 
 pub const VERSION: u8 = 1;
@@ -87,12 +88,25 @@ impl Envelope {
     }
 }
 
+/// A sealed report: the envelope to upload, and the reporter's side of the
+/// thread for reading replies later.
+pub struct Sealed {
+    pub envelope: Envelope,
+    pub thread: Thread,
+}
+
+/// An opened report and the channel's side of its thread.
+pub struct Opened {
+    pub report: Vec<u8>,
+    pub thread: Thread,
+}
+
 /// Encrypts a report to a channel.
 pub fn seal<R: RngCore + CryptoRng>(
     rng: &mut R,
     channel: &ChannelPublicKey,
     report: &[u8],
-) -> Result<Envelope, Error> {
+) -> Result<Sealed, Error> {
     let mut ephemeral = [0u8; 32];
     rng.fill_bytes(&mut ephemeral);
     let sealed = seal_with_ephemeral(ephemeral, channel, report);
@@ -109,7 +123,7 @@ pub fn seal_with_ephemeral(
     ephemeral_secret: [u8; 32],
     channel: &ChannelPublicKey,
     report: &[u8],
-) -> Result<Envelope, Error> {
+) -> Result<Sealed, Error> {
     let ephemeral = StaticSecret::from(ephemeral_secret);
     let ephemeral_public = PublicKey::from(&ephemeral);
     let shared = ephemeral.diffie_hellman(&channel.0);
@@ -121,14 +135,17 @@ pub fn seal_with_ephemeral(
     let aad = associated_data(ephemeral_public.as_bytes(), channel);
     let ciphertext = keys.encrypt(report, &aad)?;
 
-    Ok(Envelope {
-        ephemeral_public: *ephemeral_public.as_bytes(),
-        ciphertext,
+    Ok(Sealed {
+        envelope: Envelope {
+            ephemeral_public: *ephemeral_public.as_bytes(),
+            ciphertext,
+        },
+        thread: Thread::from_root(&keys.thread_root, keys.thread_id, Role::Reporter),
     })
 }
 
 /// Decrypts an envelope with the channel secret.
-pub fn open(channel: &ChannelSecret, envelope: &Envelope) -> Result<Vec<u8>, Error> {
+pub fn open(channel: &ChannelSecret, envelope: &Envelope) -> Result<Opened, Error> {
     let ephemeral_public = PublicKey::from(envelope.ephemeral_public);
     let shared = channel.0.diffie_hellman(&ephemeral_public);
     if !shared.was_contributory() {
@@ -142,12 +159,18 @@ pub fn open(channel: &ChannelSecret, envelope: &Envelope) -> Result<Vec<u8>, Err
         &channel_public,
     );
     let aad = associated_data(&envelope.ephemeral_public, &channel_public);
-    keys.decrypt(&envelope.ciphertext, &aad)
+    let report = keys.decrypt(&envelope.ciphertext, &aad)?;
+    Ok(Opened {
+        report,
+        thread: Thread::from_root(&keys.thread_root, keys.thread_id, Role::Recipient),
+    })
 }
 
 #[derive(Zeroize, ZeroizeOnDrop)]
 struct ReportKeys {
     report_key: [u8; 32],
+    thread_root: [u8; 32],
+    thread_id: [u8; 16],
 }
 
 impl ReportKeys {
@@ -155,12 +178,17 @@ impl ReportKeys {
         let hkdf = Hkdf::<Sha256>::new(Some(SALT), shared);
         let mut keys = Self {
             report_key: [0; 32],
+            thread_root: [0; 32],
+            thread_id: [0; 16],
         };
-        hkdf.expand_multi_info(
-            &[b"report key", ephemeral_public, channel.as_bytes()],
-            &mut keys.report_key,
-        )
-        .expect("32 bytes is a valid HKDF-SHA256 output length");
+        for (label, out) in [
+            (b"report key".as_slice(), keys.report_key.as_mut_slice()),
+            (b"thread root", keys.thread_root.as_mut_slice()),
+            (b"thread id", keys.thread_id.as_mut_slice()),
+        ] {
+            hkdf.expand_multi_info(&[label, ephemeral_public, channel.as_bytes()], out)
+                .expect("valid HKDF-SHA256 output length");
+        }
         keys
     }
 
@@ -200,20 +228,20 @@ mod tests {
 
     fn sealed_report() -> (ChannelSecret, Envelope) {
         let channel = ChannelSecret::generate(&mut OsRng);
-        let envelope = seal(
+        let sealed = seal(
             &mut OsRng,
             &channel.public_key(),
             b"the director moved the funds",
         )
         .unwrap();
-        (channel, envelope)
+        (channel, sealed.envelope)
     }
 
     #[test]
     fn round_trip() {
         let (channel, envelope) = sealed_report();
         assert_eq!(
-            open(&channel, &envelope).unwrap(),
+            open(&channel, &envelope).unwrap().report,
             b"the director moved the funds"
         );
     }
@@ -223,7 +251,7 @@ mod tests {
         let (channel, envelope) = sealed_report();
         let stored = Envelope::from_bytes(&envelope.to_bytes()).unwrap();
         assert_eq!(
-            open(&channel, &stored).unwrap(),
+            open(&channel, &stored).unwrap().report,
             b"the director moved the funds"
         );
     }
@@ -232,7 +260,7 @@ mod tests {
     fn another_channel_cannot_open() {
         let (_, envelope) = sealed_report();
         let other = ChannelSecret::generate(&mut OsRng);
-        assert_eq!(open(&other, &envelope), Err(Error::Decryption));
+        assert_eq!(open(&other, &envelope).err(), Some(Error::Decryption));
     }
 
     #[test]
@@ -241,7 +269,7 @@ mod tests {
         let mut bytes = envelope.to_bytes();
         *bytes.last_mut().unwrap() ^= 1;
         let tampered = Envelope::from_bytes(&bytes).unwrap();
-        assert_eq!(open(&channel, &tampered), Err(Error::Decryption));
+        assert_eq!(open(&channel, &tampered).err(), Some(Error::Decryption));
     }
 
     #[test]
@@ -251,14 +279,14 @@ mod tests {
         let mut bytes = envelope.to_bytes();
         bytes[1..33].copy_from_slice(&other.to_bytes()[1..33]);
         let tampered = Envelope::from_bytes(&bytes).unwrap();
-        assert_eq!(open(&channel, &tampered), Err(Error::Decryption));
+        assert_eq!(open(&channel, &tampered).err(), Some(Error::Decryption));
     }
 
     #[test]
     fn each_report_gets_a_fresh_ephemeral_key() {
         let channel = ChannelSecret::generate(&mut OsRng).public_key();
-        let a = seal(&mut OsRng, &channel, b"same").unwrap();
-        let b = seal(&mut OsRng, &channel, b"same").unwrap();
+        let a = seal(&mut OsRng, &channel, b"same").unwrap().envelope;
+        let b = seal(&mut OsRng, &channel, b"same").unwrap().envelope;
         assert_ne!(a.ephemeral_public, b.ephemeral_public);
         assert_ne!(a.ciphertext, b.ciphertext);
     }
@@ -266,7 +294,10 @@ mod tests {
     #[test]
     fn low_order_channel_key_is_refused() {
         let zero = ChannelPublicKey::from_bytes([0; 32]);
-        assert_eq!(seal(&mut OsRng, &zero, b"x"), Err(Error::NonContributory));
+        assert_eq!(
+            seal(&mut OsRng, &zero, b"x").err(),
+            Some(Error::NonContributory)
+        );
     }
 
     #[test]
